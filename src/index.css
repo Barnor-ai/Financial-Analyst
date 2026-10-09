@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", "Lora", Georgia, Cambria, serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  
+  --color-brand-navy: #0B192C;
+  --color-brand-navy-light: #162A45;
+  --color-brand-navy-dark: #07111E;
+  --color-brand-gold: #D4A347;
+  --color-brand-gold-hover: #C5943A;
+  --color-brand-gold-light: #FBF4E4;
+  --color-brand-cream: #F8F5EE;
+  --color-brand-cream-card: #FFFFFF;
+  --color-brand-cream-border: #E8E2D8;
+}
+
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #F8F5EE;
+  color: #0B192C;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.01em;
+}
+
+.font-serif-display {
+  font-family: var(--font-serif);
+  font-feature-settings: "kern", "liga";
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #0B192C;
+  letter-spacing: -0.02em;
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+  }
+}
+
+/* Print CSS parameters */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0B192C !important;
+    font-size: 11pt !important;
+  }
+  header, 
+  #login-portal, 
+  #landing-page-root,
+  #uploader-canvas, 
+  #statement-editor-root, 
+  #ai-chatbox, 
+  #exporter-controls-card,
+  #navigation-tabs-strip,
+  #generate-trigger-panel {
+    display: none !important;
+  }
+  #financial-health-viewport, 
+  #analysis-report-data {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .bg-white, .bg-slate-50, .bg-zinc-50 {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0B192C !important;
+    box-shadow: none !important;
+  }
+  h2, h3, h4, h5, th {
+    color: #0B192C !important;
+    font-weight: bold !important;
+  }
+}
+
