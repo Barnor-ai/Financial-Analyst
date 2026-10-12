@@ -1,6 +1,6 @@
 {
   "name": "FinScope",
-  "description": "Powerful AI Financial Statement Analyzer & Advisor. Get actionable strategic business advice, full ratio diagnostics, automated profitability assessments, and real-time consulting from your AI Finance Chatbot.",
+  "description": "FinScope — Financial clarity. Better decisions. CFO Financial Intelligence and Management Decision Support SaaS. Transform financial statements and budgets into actionable clarity and boardroom decisions.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

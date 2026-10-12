@@ -4,8 +4,10 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { signUpWithSupabase, signInWithSupabase, signInWithGoogleSupabase } from '../lib/supabase';
+import LanguageSelector from './LanguageSelector';
 
 interface LoginScreenProps {
   onLogin: (userEmail: string) => void;
@@ -14,6 +16,7 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onLogin, onBackToHome, initialMode = 'login' }: LoginScreenProps) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -160,13 +163,16 @@ export default function LoginScreen({ onLogin, onBackToHome, initialMode = 'logi
       <div className="w-full md:w-7/12 lg:w-5/9 flex items-center justify-center p-6 sm:p-12 lg:p-16">
         <div className="w-full max-w-md bg-white border border-[#E8E2D8] rounded-2xl p-8 sm:p-10 shadow-[0_4px_24px_rgba(11,25,44,0.06)] text-left">
           
-          <div className="mb-6">
-            <h3 className="font-serif-display text-2xl font-bold text-[#0B192C]">
-              Welcome
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Sign in or create your FinScope account.
-            </p>
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-serif-display text-2xl font-bold text-[#0B192C]">
+                {t('auth.welcomeBack', 'Welcome')}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {t('auth.subtitle', 'Sign in or create your FinScope account.')}
+              </p>
+            </div>
+            <LanguageSelector variant="compact" />
           </div>
 
           {/* Google OAuth Button (Matches Video Frame 00:46) */}
@@ -242,7 +248,7 @@ export default function LoginScreen({ onLogin, onBackToHome, initialMode = 'logi
                   type="text"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  placeholder="e.g. M/J Agro"
+                  placeholder="e.g. Acme Corporation"
                   className="w-full px-3.5 py-2.5 bg-white border border-[#D5CDC0] rounded-xl text-xs text-[#0B192C] focus:outline-none focus:border-[#0B192C] focus:ring-1 focus:ring-[#0B192C] transition-all"
                 />
               </div>

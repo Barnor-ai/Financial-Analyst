@@ -4,11 +4,28 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Cloud, ShieldCheck, Trash2, Check, RefreshCw, Key, Users, 
-  CreditCard, Building2, UserPlus, AlertCircle, LogOut
+  CreditCard, Building2, UserPlus, AlertCircle, LogOut,
+  Globe, Languages, BookOpen, Sparkles, CheckCircle2, Info
 } from 'lucide-react';
 import { UserProfile, OrganisationMember, UserRole } from '../types';
+import { 
+  SUPPORTED_LANGUAGES, 
+  SupportedLanguageCode, 
+  setInterfaceLanguage,
+  getOrgReportingLanguage,
+  setOrgReportingLanguage,
+  NUMBER_FORMAT_OPTIONS,
+  NumberFormatStyle,
+  getNumberFormatPreference,
+  setNumberFormatPreference,
+  STANDARD_FINANCIAL_GLOSSARY,
+  getGlossaryOverrides,
+  saveGlossaryOverride,
+  resetGlossaryOverrides
+} from '../i18n';
 
 interface SettingsViewProps {
   profile: UserProfile;
@@ -31,12 +48,23 @@ export default function SettingsView({
   onResetWorkspace,
   onSignOutEverywhere
 }: SettingsViewProps) {
-  const [activeTab, setActiveTab] = useState<'admin' | 'team' | 'billing'>('admin');
+  const { t, i18n } = useTranslation();
+  const [activeTab, setActiveTab] = useState<'admin' | 'team' | 'billing' | 'localization'>('admin');
   const [resetConfirm, setResetConfirm] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<UserRole>('analyst');
   const [inviteSuccess, setInviteSuccess] = useState(false);
+
+  // Localization settings state
+  const currentLang = (i18n.language || 'en') as SupportedLanguageCode;
+  const [orgLang, setOrgLang] = useState<SupportedLanguageCode>(() => getOrgReportingLanguage());
+  const [numberFormat, setNumberFormat] = useState<NumberFormatStyle>(() => getNumberFormatPreference());
+  const [glossaryEdits, setGlossaryEdits] = useState<Record<string, string>>(() => {
+    const overrides = getGlossaryOverrides();
+    return { ...(overrides[currentLang] || {}) };
+  });
+  const [glossarySaveSuccess, setGlossarySaveSuccess] = useState(false);
 
   const [teamMembers, setTeamMembers] = useState<OrganisationMember[]>([
     {
@@ -130,6 +158,18 @@ export default function SettingsView({
           }`}
         >
           Subscription & Limits
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('localization')}
+          className={`py-2 px-4 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'localization'
+              ? 'bg-[#0B192C] text-white'
+              : 'text-slate-600 hover:text-[#0B192C] hover:bg-white'
+          }`}
+        >
+          <Globe className="w-3.5 h-3.5 text-[#D6AE55]" />
+          <span>Languages & Regional</span>
         </button>
       </div>
 
@@ -333,6 +373,234 @@ export default function SettingsView({
               <span className="text-[11px] text-slate-500">Senior consultant model</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 4: Global Languages, Regional Number Formatting & Terminology Glossary */}
+      {activeTab === 'localization' && (
+        <div className="space-y-6">
+
+          {/* Statutory Translation Notice */}
+          <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-950 shadow-xs">
+            <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <span className="font-bold font-mono uppercase tracking-wider text-amber-900 block">
+                {t('common.certifiedTranslationDisclaimer', 'Translations are provided for operational and management decision support and are NOT certified by a sworn translator or statutory auditor. Financial terms can be reviewed and customized in the Terminology Glossary.')}
+              </span>
+              <p className="leading-relaxed text-amber-800">
+                FinScope preserves exact accounting figures, account codes, and company identities without alteration. You can customize the translation of standard accounting titles below to comply with local corporate reporting requirements.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 1: Interface & Reporting Languages */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-[#E8E2D8] shadow-xs space-y-6">
+            <div className="border-b border-[#E8E2D8] pb-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-serif-display text-lg font-bold text-[#0B192C]">
+                  {t('settings.interfaceLanguage', 'Interface Language')}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {t('settings.interfaceLanguageDesc', 'The language used for menus, buttons, and navigation across your workspace.')}
+                </p>
+              </div>
+              <Languages className="w-5 h-5 text-[#D6AE55]" />
+            </div>
+
+            {/* Language Selection Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {SUPPORTED_LANGUAGES.map(lang => {
+                const isSelected = lang.code === currentLang;
+                return (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => setInterfaceLanguage(lang.code)}
+                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                      isSelected
+                        ? 'bg-[#0B1530] text-white border-[#0B1530] shadow-xs'
+                        : 'bg-[#FAF7F2] hover:bg-white text-[#0B192C] border-[#E8E2D8]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xl leading-none">{lang.flag}</span>
+                      <div>
+                        <span className="font-bold text-xs block leading-tight">{lang.nativeName}</span>
+                        <span className={`text-[10px] font-mono ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                          {lang.name} {lang.isRTL ? '(RTL)' : ''}
+                        </span>
+                      </div>
+                    </div>
+                    {isSelected && <CheckCircle2 className="w-4 h-4 text-[#D6AE55] shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Organization Default Reporting Language */}
+            <div className="pt-4 border-t border-[#E8E2D8] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="text-xs font-bold text-[#0B192C]">
+                  {t('settings.reportingLanguage', 'Default Organization Reporting Language')}
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  {t('settings.reportingLanguageDesc', 'The default language used when generating boardroom PDF reports and executive memos.')}
+                </p>
+              </div>
+
+              <select
+                value={orgLang}
+                onChange={(e) => {
+                  const val = e.target.value as SupportedLanguageCode;
+                  setOrgLang(val);
+                  setOrgReportingLanguage(val);
+                }}
+                className="px-3 py-2 bg-[#FAF7F2] border border-[#E8E2D8] rounded-xl text-xs font-semibold text-[#0B192C] cursor-pointer"
+              >
+                {SUPPORTED_LANGUAGES.map(l => (
+                  <option key={l.code} value={l.code}>
+                    {l.flag} {l.name} ({l.nativeName})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Card 2: Number Formatting Style (Independent of Language) */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-[#E8E2D8] shadow-xs space-y-4">
+            <div className="border-b border-[#E8E2D8] pb-4">
+              <h3 className="font-serif-display text-lg font-bold text-[#0B192C]">
+                {t('settings.numberFormat', 'Number Formatting Style')}
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {t('settings.numberFormatDesc', 'Choose thousands and decimal separators for monetary amounts and ratios.')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {NUMBER_FORMAT_OPTIONS.map(opt => {
+                const isSelected = opt.id === numberFormat;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setNumberFormat(opt.id);
+                      setNumberFormatPreference(opt.id);
+                    }}
+                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                      isSelected
+                        ? 'bg-[#0B1530] text-white border-[#0B1530] shadow-xs'
+                        : 'bg-[#FAF7F2] hover:bg-white text-[#0B192C] border-[#E8E2D8]'
+                    }`}
+                  >
+                    <div>
+                      <span className="text-xs font-bold block">{opt.label}</span>
+                      <span className={`text-xs font-mono font-bold mt-1 block ${isSelected ? 'text-[#D6AE55]' : 'text-slate-600'}`}>
+                        Sample: ${opt.example}
+                      </span>
+                    </div>
+                    {isSelected && <Check className="w-4 h-4 text-[#D6AE55]" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Card 3: Financial Terminology Review & Jurisdiction Customization */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-[#E8E2D8] shadow-xs space-y-4">
+            <div className="border-b border-[#E8E2D8] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-serif-display text-lg font-bold text-[#0B192C]">
+                  {t('settings.terminologyReviewTitle', 'Financial Terminology Review & Jurisdiction Customization')}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {t('settings.terminologyReviewDesc', 'Review standard translations for statutory accounts and customize them for your company or local GAAP requirements.')}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetGlossaryOverrides();
+                    setGlossaryEdits({});
+                    setGlossarySaveSuccess(true);
+                    setTimeout(() => setGlossarySaveSuccess(false), 2000);
+                  }}
+                  className="px-3 py-1.5 bg-[#FAF7F2] hover:bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg border border-[#E8E2D8] cursor-pointer"
+                >
+                  {t('settings.resetTerminology', 'Reset to System Defaults')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    Object.entries(glossaryEdits).forEach(([termKey, customVal]) => {
+                      saveGlossaryOverride(termKey, currentLang, String(customVal || ''));
+                    });
+                    setGlossarySaveSuccess(true);
+                    setTimeout(() => setGlossarySaveSuccess(false), 2500);
+                  }}
+                  className="px-4 py-1.5 bg-[#0B1530] hover:bg-[#162A45] text-white text-xs font-bold rounded-lg cursor-pointer shadow-xs"
+                >
+                  {t('settings.saveTerminology', 'Save Customizations')}
+                </button>
+              </div>
+            </div>
+
+            {glossarySaveSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Financial terminology customizations saved successfully for {currentLang.toUpperCase()}.</span>
+              </div>
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[#E8E2D8] text-slate-400 font-mono text-[10px] uppercase">
+                    <th className="py-2.5 text-left">{t('settings.termKey', 'Standard Accounting Concept')}</th>
+                    <th className="py-2.5 text-left">{t('settings.defaultTranslation', 'Default Translation')}</th>
+                    <th className="py-2.5 text-left">{t('settings.customTranslation', 'Company / Jurisdiction Customization')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E8E2D8]">
+                  {STANDARD_FINANCIAL_GLOSSARY.map(term => {
+                    const defaultTrans = term.defaultTranslations[currentLang] || term.english;
+                    const customVal = glossaryEdits[term.key] || '';
+
+                    return (
+                      <tr key={term.key} className="hover:bg-[#FAF7F2]/50">
+                        <td className="py-2.5 font-medium text-[#0B192C]">
+                          <div>{term.english}</div>
+                          <span className="text-[10px] font-mono text-slate-400">{term.category}</span>
+                        </td>
+                        <td className="py-2.5 text-slate-600 font-medium">
+                          {defaultTrans}
+                        </td>
+                        <td className="py-2.5">
+                          <input
+                            type="text"
+                            placeholder={defaultTrans}
+                            value={customVal}
+                            onChange={(e) => {
+                              setGlossaryEdits({
+                                ...glossaryEdits,
+                                [term.key]: e.target.value
+                              });
+                            }}
+                            className="w-full max-w-sm px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8E2D8] rounded-lg text-xs font-medium text-[#0B192C] focus:bg-white focus:outline-hidden focus:border-[#D6AE55]"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
         </div>
       )}
 

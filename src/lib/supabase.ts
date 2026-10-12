@@ -1,28 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 import { UserProfile, PeriodFinancialData, BudgetVsActual, FinancialAnalysisReport } from '../types';
 
-const DEFAULT_SUPABASE_URL = 'https://cvalqaolnppzoviagvtw.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2YWxxYW9sbnBwem92aWFndnR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODExNDEsImV4cCI6MjEwMjA1NzE0MX0._IBWO0OjXI9o2rFcdEvmKBF4UJRml5R4Mgxe5lRdBYg';
+const DEFAULT_SUPABASE_URL = 'https://aqdspwrwwnvmokvzefsq.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxZHNwd3J3d252bW9rdnplZnNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1NzM0NzgsImV4cCI6MjEwNzE0OTQ3OH0.sXpWa5aLvAUN2ariX2pDB2CjGfesz3bq-7k0eEqkbbU';
 
 function getValidSupabaseUrl(): string {
   const envUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (!envUrl || typeof envUrl !== 'string') return DEFAULT_SUPABASE_URL;
-  const trimmed = envUrl.trim();
-  if (!trimmed || trimmed === 'undefined' || trimmed === 'null' || trimmed.startsWith('MY_')) {
-    return DEFAULT_SUPABASE_URL;
-  }
-  
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+  let target = (envUrl && typeof envUrl === 'string' && envUrl.trim() && !envUrl.startsWith('MY_'))
+    ? envUrl.trim()
+    : DEFAULT_SUPABASE_URL;
+
+  // Clean trailing /rest/v1 or /rest/v1/
+  target = target.replace(/\/rest\/v1\/?$/, '');
+
+  if (target.startsWith('http://') || target.startsWith('https://')) {
     try {
-      new URL(trimmed);
-      return trimmed;
+      new URL(target);
+      return target;
     } catch {
       return DEFAULT_SUPABASE_URL;
     }
   }
-  
-  if (trimmed.includes('.')) {
-    const prefixed = `https://${trimmed}`;
+
+  if (target.includes('.')) {
+    const prefixed = `https://${target}`;
     try {
       new URL(prefixed);
       return prefixed;
@@ -30,7 +31,7 @@ function getValidSupabaseUrl(): string {
       return DEFAULT_SUPABASE_URL;
     }
   }
-  
+
   return DEFAULT_SUPABASE_URL;
 }
 

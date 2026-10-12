@@ -11,12 +11,23 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { UserProfile, PeriodFinancialData, FinancialAnalysisReport } from '../types';
-import { calculateFinancialRatios, calculatePercentageChange, safeDiv } from '../utils/financialEngine';
+import { 
+  calculateFinancialRatios, 
+  calculatePercentageChange, 
+  safeDiv, 
+  generateReportFromFinancials, 
+  generateLineItemExplanations 
+} from '../utils/financialEngine';
+import VarianceInvestigationHub from './VarianceInvestigationHub';
+import ReportExporter from './ReportExporter';
+import { BudgetVsActual } from '../types';
 
 interface ProfitabilityAnalysisViewProps {
   profile: UserProfile;
   periods: PeriodFinancialData[];
   analysis: FinancialAnalysisReport | null;
+  budgetPerformance?: BudgetVsActual[];
+  defaultSubTab?: 'pnl' | 'balanceSheet' | 'cashFlow' | 'ratios' | 'variance_risks';
   onNavigateToEdit?: () => void;
   onNavigateToUpload?: () => void;
 }
@@ -25,12 +36,14 @@ export default function ProfitabilityAnalysisView({
   profile,
   periods,
   analysis,
+  budgetPerformance = [],
+  defaultSubTab = 'pnl',
   onNavigateToEdit,
   onNavigateToUpload
 }: ProfitabilityAnalysisViewProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'pnl' | 'balanceSheet' | 'cashFlow' | 'ratios'>('pnl');
+  const [activeSubTab, setActiveSubTab] = useState<'pnl' | 'balanceSheet' | 'cashFlow' | 'ratios' | 'variance_risks'>(defaultSubTab);
 
-  const curSymbol = profile.currency.match(/\(([^)]+)\)/)?.[1] || profile.currency.split(' ')[0] || 'GH₵';
+  const curSymbol = profile.currency.match(/\(([^)]+)\)/)?.[1] || profile.currency.split(' ')[0] || '$';
 
   // Reverse chronological sorting so Current Year is first
   const sortedPeriods = [...periods].sort((a, b) => b.period.localeCompare(a.period, undefined, { numeric: true }));
@@ -63,6 +76,10 @@ export default function ProfitabilityAnalysisView({
 
   const ratiosCurr = calculateFinancialRatios(currPeriod, prevPeriod);
   const ratiosPrev = calculateFinancialRatios(prevPeriod);
+
+  // Dynamic diagnostic report specific to this company and periods
+  const dynamicReport = analysis || generateReportFromFinancials(profile, sortedPeriods);
+  const whyTexts = dynamicReport.lineItemExplanations || generateLineItemExplanations(currPeriod, prevPeriod);
 
   // Format currency helper
   const formatAmt = (num: number, withPrefix = true) => {
@@ -138,18 +155,6 @@ export default function ProfitabilityAnalysisView({
 
   const handlePrintPDF = () => {
     window.print();
-  };
-
-  // Why callouts matching video
-  const whyTexts = analysis?.lineItemExplanations || {
-    revenue: "Why: Revenue saw a remarkable 53.0% increase, driven by strong performance in Agro-fertiliser sales (+91.6%), Farm inputs sales (+81.8%) and Agro-seed sales (+110.8%). Commodity sales saw a modest decline of -4.7% due to lower prices.",
-    cogs: "Why: COGS increased by 38.5% due to higher sales volume. The slower growth rate relative to revenue suggests improved purchasing efficiency, better cost control on direct inputs, or a favorable shift in product mix towards higher margin lines.",
-    grossProfit: "Why: Gross profit surged by an impressive 118.5%. This was a direct result of revenue growing much faster than the cost of sales, leading to a substantial improvement in gross margin from 17.5% to 24.9%.",
-    operatingExpenses: "Why: Operating expenses grew by 47.1%, primarily due to higher salaries (+52.1%), fuel costs (+131.5%), and administrative and depreciation (+78.2%) to support the expanded scale of operations. The increase is proportional to the business growth.",
-    operatingIncome: "Why: Operating income grew by 152.1%, far outstripping revenue growth. This highlights strong operating leverage, where the company effectively controlled both direct and operating costs relative to revenue.",
-    growthLevy: "Why: This government levy increased in direct proportion to pre-tax profit, reflecting the company's higher profitability.",
-    taxExpense: "Why: The tax charge more than tripled, driven by the significant rise in profitability. The effective tax rate based on pre-tax profit also increased from 27.5% to 37.4%, representing a material cash tax drag.",
-    netIncome: "Why: Despite a much larger tax bill, net income more than doubled, showcasing a year of outstanding profitability and successful execution. This strong bottom-line result significantly boosted retained earnings and overall equity."
   };
 
   return (
@@ -242,6 +247,17 @@ export default function ProfitabilityAnalysisView({
           }`}
         >
           Key Ratios Matrix
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('variance_risks')}
+          className={`py-2 px-4 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+            activeSubTab === 'variance_risks'
+              ? 'bg-[#0B192C] text-white'
+              : 'text-slate-600 hover:text-[#0B192C] hover:bg-white'
+          }`}
+        >
+          <span>Budget Variance & Risks</span>
         </button>
       </div>
 
@@ -470,9 +486,7 @@ export default function ProfitabilityAnalysisView({
             {/* Narrative Overview Paragraph Card */}
             <div className="bg-[#FAF7F2] border border-[#E8E2D8] rounded-2xl p-6 sm:p-8 text-slate-800 text-sm leading-relaxed font-normal shadow-xs">
               <p>
-                {analysis?.executiveSummary || 
-                  `${profile.companyName || 'The company'} achieved exceptional profitability in ${currPeriod.period}, with net income more than doubling to ${formatAmt(isCurr.netIncome)} from ${formatAmt(isPrev.netIncome)} in the prior year. This stellar performance was underpinned by a commercial avalanche of top-line revenue growth and significant margin expansion at both the gross and operating levels. The company demonstrated remarkable operating leverage, with profits growing at a much faster rate than sales, indicating an efficient and scalable business model.`
-                }
+                {dynamicReport.executiveSummary}
               </p>
             </div>
 
@@ -485,9 +499,7 @@ export default function ProfitabilityAnalysisView({
                   REVENUE DRIVERS
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  {analysis?.revenueDrivers || 
-                    `Revenue expansion was broad-based, highlighting strong market penetration and demand. Higher volumes across flagship divisions delivered overall top-line growth of ${calculatePercentageChange(isCurr.revenue, isPrev.revenue)}%. Diversified offerings reduced single-product dependency and cemented a healthy, resilient commercial pipeline.`
-                  }
+                  {dynamicReport.revenueDrivers}
                 </p>
               </div>
 
@@ -497,9 +509,7 @@ export default function ProfitabilityAnalysisView({
                   COST DRIVERS
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  {analysis?.costDrivers || 
-                    `Cost of Goods Sold (COGS) rose by ${calculatePercentageChange(isCurr.cogs, isPrev.cogs)}%, growing slower than revenue, which unlocked substantial margin expansion. Efficiencies in procurement and supplier volume discounts kept input cost escalations contained, while operating overheads expanded at a controlled rate.`
-                  }
+                  {dynamicReport.costDrivers}
                 </p>
               </div>
 
@@ -509,9 +519,7 @@ export default function ProfitabilityAnalysisView({
                   MARGIN COMMENTARY
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  {analysis?.marginCommentary || 
-                    `Profit margins showed dramatic structural improvement. Gross margin expanded to ${safeDiv(isCurr.grossProfit, isCurr.revenue, 100).toFixed(1)}% (from ${safeDiv(isPrev.grossProfit, isPrev.revenue, 100).toFixed(1)}%), acting as the primary engine for bottom-line multiplication. Net profit margin reached ${safeDiv(isCurr.netIncome, isCurr.revenue, 100).toFixed(1)}%, proving pricing power and cost discipline.`
-                  }
+                  {dynamicReport.marginCommentary}
                 </p>
               </div>
 
@@ -521,11 +529,11 @@ export default function ProfitabilityAnalysisView({
                   KEY TAKEAWAYS
                 </span>
                 <ul className="text-xs text-slate-700 space-y-2">
-                  {(analysis?.keyTakeaways || [
-                    `Explosive revenue growth of ${calculatePercentageChange(isCurr.revenue, isPrev.revenue)}% to ${formatAmt(isCurr.revenue)}.`,
-                    `Significant gross margin expansion from ${safeDiv(isPrev.grossProfit, isPrev.revenue, 100).toFixed(1)}% to ${safeDiv(isCurr.grossProfit, isCurr.revenue, 100).toFixed(1)}%.`,
-                    `Net income more than doubled, increasing by ${calculatePercentageChange(isCurr.netIncome, isPrev.netIncome)}% to ${formatAmt(isCurr.netIncome)}.`,
-                    `Strong operating leverage, with operating profit expanding ${calculatePercentageChange(isCurr.operatingIncome, isPrev.operatingIncome)}%.`
+                  {(dynamicReport.keyTakeaways || [
+                    `Revenue changed by ${calculatePercentageChange(isCurr.revenue, isPrev.revenue)}% to ${formatAmt(isCurr.revenue)}.`,
+                    `Gross margin reached ${safeDiv(isCurr.grossProfit, isCurr.revenue, 100).toFixed(1)}%.`,
+                    `Net income recorded at ${formatAmt(isCurr.netIncome)}.`,
+                    `Operating profit changed by ${calculatePercentageChange(isCurr.operatingIncome, isPrev.operatingIncome)}%.`
                   ]).map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#D4A347] mt-1.5 shrink-0" />
@@ -681,6 +689,26 @@ export default function ProfitabilityAnalysisView({
           </div>
         </div>
       )}
+
+      {/* TAB 5: Variance & Emerging Risks Hub */}
+      {activeSubTab === 'variance_risks' && (
+        <VarianceInvestigationHub
+          profile={profile}
+          periods={periods}
+          budgetPerformance={budgetPerformance}
+          onOpenDataEditor={onNavigateToEdit}
+        />
+      )}
+
+      {/* Board-Ready Report Exporter Card */}
+      <div className="pt-6 border-t border-[#E8E2D8]">
+        <ReportExporter
+          profile={profile}
+          periods={periods}
+          analysis={dynamicReport}
+          budgetPerformance={budgetPerformance}
+        />
+      </div>
 
     </div>
   );

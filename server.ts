@@ -40,62 +40,66 @@ app.post('/api/analyze', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const companyProfile = profile || {};
     // Format financial data into a clean text block for Gemini
     const financialSummaryText = periods.map((p: any) => {
-      const is = p.incomeStatement;
-      const bs = p.balanceSheet;
-      const cf = p.cashFlow;
+      const is = p.incomeStatement || {};
+      const bs = p.balanceSheet || {};
+      const cf = p.cashFlow || {};
       
-      const opExpenses = is.operatingExpenses;
+      const opExpenses = is.operatingExpenses || {};
+      const assets = bs.assets || {};
+      const liabilities = bs.liabilities || {};
+      const equity = bs.equity || {};
       
       return `
-[Period: ${p.period}]
+[Period: ${p.period || 'Current'}]
 --- INCOME STATEMENT ---
-Revenue: ${is.revenue}
-COGS: ${is.cogs}
-Gross Profit: ${is.grossProfit}
+Revenue: ${is.revenue ?? 0}
+COGS: ${is.cogs ?? 0}
+Gross Profit: ${is.grossProfit ?? 0}
 Operating Expenses:
-  - Salaries: ${opExpenses.salaries}
-  - Marketing: ${opExpenses.marketing}
-  - Rent & Utilities: ${opExpenses.rentAndUtilities}
-  - Depreciation: ${opExpenses.depreciation}
-  - Other OpEx: ${opExpenses.otherOpEx}
-  - Total OpEx: ${opExpenses.total}
-Operating Income (EBIT): ${is.operatingIncome}
-Interest Expense: ${is.interestExpense}
-Tax Expense: ${is.taxExpense}
-Net Income: ${is.netIncome}
+  - Salaries: ${opExpenses.salaries ?? 0}
+  - Marketing: ${opExpenses.marketing ?? 0}
+  - Rent & Utilities: ${opExpenses.rentAndUtilities ?? 0}
+  - Depreciation: ${opExpenses.depreciation ?? 0}
+  - Other OpEx: ${opExpenses.otherOpEx ?? 0}
+  - Total OpEx: ${opExpenses.total ?? 0}
+Operating Income (EBIT): ${is.operatingIncome ?? 0}
+Interest Expense: ${is.interestExpense ?? 0}
+Tax Expense: ${is.taxExpense ?? 0}
+Net Income: ${is.netIncome ?? 0}
 
 --- BALANCE SHEET ---
 Assets:
-  - Cash & Equivalents: ${bs.assets.cashAndEquivalents}
-  - Accounts Receivable: ${bs.assets.accountsReceivable}
-  - Inventory: ${bs.assets.inventory}
-  - Prepaid Expenses: ${bs.assets.prepaidExpenses}
-  - Total Current Assets: ${bs.assets.totalCurrentAssets}
-  - PP&E: ${bs.assets.propertyPlantEquipment}
-  - Intangibles: ${bs.assets.intangibleAssets}
-  - Total Non-Current Assets: ${bs.assets.totalNonCurrentAssets}
-  - Total Assets: ${bs.assets.totalAssets}
+  - Cash & Equivalents: ${assets.cashAndEquivalents ?? 0}
+  - Accounts Receivable: ${assets.accountsReceivable ?? 0}
+  - Inventory: ${assets.inventory ?? 0}
+  - Prepaid Expenses: ${assets.prepaidExpenses ?? 0}
+  - Total Current Assets: ${assets.totalCurrentAssets ?? 0}
+  - PP&E: ${assets.propertyPlantEquipment ?? 0}
+  - Intangibles: ${assets.intangibleAssets ?? 0}
+  - Total Non-Current Assets: ${assets.totalNonCurrentAssets ?? 0}
+  - Total Assets: ${assets.totalAssets ?? 0}
 Liabilities:
-  - Accounts Payable: ${bs.liabilities.accountsPayable}
-  - Short-Term Debt: ${bs.liabilities.shortTermDebt}
-  - Accrued Liabilities: ${bs.liabilities.accruedLiabilities}
-  - Total Current Liabilities: ${bs.liabilities.totalCurrentLiabilities}
-  - Long-Term Debt: ${bs.liabilities.longTermDebt}
-  - Total Non-Current Liabilities: ${bs.liabilities.totalNonCurrentLiabilities}
-  - Total Liabilities: ${bs.liabilities.totalLiabilities}
+  - Accounts Payable: ${liabilities.accountsPayable ?? 0}
+  - Short-Term Debt: ${liabilities.shortTermDebt ?? 0}
+  - Accrued Liabilities: ${liabilities.accruedLiabilities ?? 0}
+  - Total Current Liabilities: ${liabilities.totalCurrentLiabilities ?? 0}
+  - Long-Term Debt: ${liabilities.longTermDebt ?? 0}
+  - Total Non-Current Liabilities: ${liabilities.totalNonCurrentLiabilities ?? 0}
+  - Total Liabilities: ${liabilities.totalLiabilities ?? 0}
 Equity:
-  - Common Stock: ${bs.equity.commonStock}
-  - Retained Earnings: ${bs.equity.retainedEarnings}
-  - Total Equity: ${bs.equity.totalEquity}
+  - Common Stock: ${equity.commonStock ?? 0}
+  - Retained Earnings: ${equity.retainedEarnings ?? 0}
+  - Total Equity: ${equity.totalEquity ?? 0}
 
 --- CASH FLOW STATEMENT ---
-Operating Cash Flow: ${cf.operatingCashFlow}
-Investing Cash Flow: ${cf.investingCashFlow}
-Financing Cash Flow: ${cf.financingCashFlow}
-Net Cash Flow: ${cf.netCashFlow}
-Ending Cash Balance: ${cf.endingCashBalance}
+Operating Cash Flow: ${cf.operatingCashFlow ?? 0}
+Investing Cash Flow: ${cf.investingCashFlow ?? 0}
+Financing Cash Flow: ${cf.financingCashFlow ?? 0}
+Net Cash Flow: ${cf.netCashFlow ?? 0}
+Ending Cash Balance: ${cf.endingCashBalance ?? 0}
 `;
     }).join('\n\n');
 
@@ -124,10 +128,10 @@ Follow these strict output directives:
 
     const prompt = `
 Analyze the financial reports for:
-- Company Name: ${profile.companyName}
-- Industry: ${profile.industry}
-- Location: ${profile.location}
-- Currency: ${profile.currency}
+- Company Name: ${companyProfile.companyName || 'Enterprise'}
+- Industry: ${companyProfile.industry || 'General Enterprise'}
+- Location: ${companyProfile.location || 'Global'}
+- Currency: ${companyProfile.currency || 'USD'}
 
 Data periods supplied:
 ${financialSummaryText}
@@ -140,7 +144,7 @@ Generate a comprehensive diagnostic advisory report conforming exactly to the re
 
     // Query Gemini
     const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
+      model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
         systemInstruction,
@@ -155,6 +159,23 @@ Generate a comprehensive diagnostic advisory report conforming exactly to the re
             financialHealthScore: { 
               type: Type.INTEGER, 
               description: 'A structural financial health and risk rating score from 1 to 10 (1 is severe hazard, 10 is pristine).' 
+            },
+            revenueDrivers: {
+              type: Type.STRING,
+              description: 'Specific narrative detailing drivers behind top-line revenue movements, segment performance, and pricing power.'
+            },
+            costDrivers: {
+              type: Type.STRING,
+              description: 'Narrative detailing cost of sales, direct material inflation, and operating overhead behavior.'
+            },
+            marginCommentary: {
+              type: Type.STRING,
+              description: 'Narrative analyzing gross margin, operating margin, and net profit margin structural shifts.'
+            },
+            keyTakeaways: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: 'Core bullets of executive takeaways and vital observations.'
             },
             profitabilityAnalysis: { 
               type: Type.STRING, 
@@ -264,16 +285,17 @@ app.post('/api/chat', async (req: Request, res: Response): Promise<void> => {
         `Recommendations: ${currentAnalysis.recommendations.join('\n')}`
       : 'No analysis diagnostic report generated yet.';
 
+    const profile = companyProfile || {};
     const systemInstruction = `
 You are the elite AI Finance Chatbot for "FinScope", a premium diagnostic platform.
 You act as a senior corporate financial consultant, investment banker, and micro-business advisor.
 Provide clear, realistic, and highly practical financial coaching based on the user's specific financial statements and analysis report.
 
 Context about the active client:
-- Company Name: ${companyProfile.companyName || 'Unknown company'}
-- Industry: ${companyProfile.industry || 'General enterprise'}
-- Location: ${companyProfile.location || 'Global'}
-- Currency: ${companyProfile.currency || 'USD'}
+- Company Name: ${profile.companyName || 'Unknown company'}
+- Industry: ${profile.industry || 'General enterprise'}
+- Location: ${profile.location || 'Global'}
+- Currency: ${profile.currency || 'USD'}
 
 Client Financial Numbers Summary:
 ${financialsContext}
@@ -293,7 +315,7 @@ Keep your replies concise, expert, helpful, and highly contextualized to their e
 
     // Generate output
     const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
+      model: 'gemini-3.8-flash',
       contents: [
         ...chatHistory,
         { role: 'user', parts: [{ text: latestMessage.text }] }
@@ -332,7 +354,7 @@ Your task is to review the uploaded financial statement document (PDF, Excel tab
 - Do NOT make up numbers if they exist in the document. Read the actual values from the user's uploaded statement.
 - If negative numbers are in parentheses (e.g., "(50,000)"), parse them as negative numbers (e.g., -50000).
 - If only one period exists, extract that period and reconstruct a baseline prior period reflecting standard historical trends so comparative analysis is possible.
-- Ensure basic accounting identities hold:
+- Ensure basic accounting identities are extracted faithfully:
   * Gross Profit = Revenue - COGS
   * Total OpEx = sum of salaries, marketing, utilities, depreciation, other OpEx
   * Operating Income (EBIT) = Gross Profit - Total OpEx
@@ -342,7 +364,7 @@ Your task is to review the uploaded financial statement document (PDF, Excel tab
   * Total Assets = Total Current Assets + Total Non-Current Assets
   * Total Liabilities = Total Current Liabilities + Total Non-Current Liabilities
   * Total Equity = Common Stock + Retained Earnings
-  * Total Assets MUST equal Total Liabilities + Total Equity (Balancing sheet). If out of balance, adjust Retained Earnings so Assets = Liabilities + Equity.
+  * CRITICAL DIRECTIVE: Never silently alter uploaded figures to make the accounts balance. Extract the authentic numbers as stated in the document so any discrepancies can be reviewed and corrected by the user.
   * Ending Cash Balance = Cash and cash equivalents on balance sheet.
 
 Return structured JSON conforming to the requested schema.
@@ -383,7 +405,7 @@ Extract and populate the exact numbers into the periods array with CURRENT YEAR 
         }
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3.7-flash',
+          model: 'gemini-3.8-flash',
           contents,
           config: {
             systemInstruction,
@@ -417,6 +439,7 @@ Extract and populate the exact numbers into the periods array with CURRENT YEAR 
                             required: ['salaries', 'marketing', 'rentAndUtilities', 'depreciation', 'otherOpEx', 'total']
                           },
                           operatingIncome: { type: Type.NUMBER },
+                          growthLevy: { type: Type.NUMBER },
                           interestExpense: { type: Type.NUMBER },
                           taxExpense: { type: Type.NUMBER },
                           netIncome: { type: Type.NUMBER }
@@ -506,6 +529,9 @@ Extract and populate the exact numbers into the periods array with CURRENT YEAR 
       return;
     }
 
+    // Ensure sorted Current Year First
+    parsedPeriods.sort((a: any, b: any) => b.period.localeCompare(a.period, undefined, { numeric: true }));
+
     res.json({ periods: parsedPeriods });
   } catch (error: any) {
     console.error('Error in /api/parse-file:', error);
@@ -513,6 +539,7 @@ Extract and populate the exact numbers into the periods array with CURRENT YEAR 
       if (req.body.fileContent) {
         const fallback = parseRawStatementText(req.body.fileContent, req.body.profile?.industry || 'General');
         if (fallback && fallback.length > 0) {
+          fallback.sort((a: any, b: any) => b.period.localeCompare(a.period, undefined, { numeric: true }));
           res.json({ periods: fallback });
           return;
         }
